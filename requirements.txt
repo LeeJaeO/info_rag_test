@@ -1,0 +1,12 @@
+deepspeed
+huggingface_hub
+joblib
+nltk
+numpy
+regex
+torch
+tqdm
+transformers==4.28.0
+protobuf
+sentencepiece
+accelerate
