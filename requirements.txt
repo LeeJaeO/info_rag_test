@@ -10,3 +10,6 @@ transformers==4.28.0
 protobuf
 sentencepiece
 accelerate
+colbert
+colbert-ai[torch,faiss-cpu]
+gitpython
