@@ -37,6 +37,7 @@ import regex,string
 from collections import Counter
 IGNORE_INDEX = -100
 from dataclasses import dataclass
+from datasets import load_dataset
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -280,59 +281,63 @@ def eval_ans(prediction: str, reference: str):
     f1 = (2 * precision * recall) / (precision + recall)
     return em, f1, precision, recall
 
-# def evaluate(
-#     tokenizer,
-#     model,
-#     device,
-#     temperature=0.1,
-#     top_p=0.75,
-#     top_k=40,
-#     num_beams=4,
-#     max_new_tokens=256,
-#     **kwargs,
-# ):
-#     em_sum = 0
-#     em_count = 0
-#     data_list = joblib.load('/apdcephfs/share_47076/shchxu/ir_datasets/odqa/nq/nq-test-ref.qa')
-#     for i in data_list:
-#         temp_dic = {}
-#         temp_dic['instruction'] = i[0] + ' Reference is ' +i[1]
-#         temp_dic['input'] = ''
-#         temp_dic['output'] = i['positive_ctxs'][0]['text']
-#         #prompt = generate_prompt(instruction, input)
-#         prompt = 'Please tell me more about: ' + temp_dic['instruction'] + ' Answer is: '
-#         inputs = tokenizer(prompt, return_tensors="pt")
-#         input_ids = inputs["input_ids"].to(device)
-#         generation_config = GenerationConfig(
-#             temperature=temperature,
-#             top_p=top_p,
-#             top_k=top_k,
-#             num_beams=num_beams,
-#             **kwargs,
-#         )
-#         with torch.no_grad():
-#             generation_output = model.generate(
-#                 input_ids=input_ids,
-#                 generation_config=generation_config,
-#                 return_dict_in_generate=True,
-#                 output_scores=True,
-#                 max_new_tokens=max_new_tokens,
-#             )
-#         s = generation_output.sequences[0]
-#         output = tokenizer.decode(s)
-#         print(output)
-#         print('-----------------------------------------')
-#         em = 0
-#         answer_list = i['answer_list']
-#         output_answer = output.split('Answer is:')[1]
-#         for answer in answer_list[0]:
-#             em, f1, precision, recall = eval_ans(output_answer, answer)
-#             if em > 0:
-#                 break
-#         em_sum += em
-#         em_count += 1
-#         print(em_count)
-#     print('EM is {}'.format(em_sum / em_count))
+def evaluate(
+    tokenizer,
+    model,
+    device,
+    temperature=0.1,
+    top_p=0.75,
+    top_k=40,
+    num_beams=4,
+    max_new_tokens=256,
+    **kwargs,
+):
+    em_sum = 0
+    em_count = 0
+    ds = load_dataset("Atipico1/NQ-colbert")
+    data_list = ds["test"]
+    for i in data_list:
+        temp_dic = {}
+        reference =""
+        for j in range(len(i['ctxs'])):
+            reference+=i['ctxs'][j]['text']
+        temp_dic['instruction'] = i['question'] + ' Reference is ' +reference
+        #temp_dic['input'] = ''
+        # temp_dic['output'] = i['positive_ctxs'][0]['text']
+        #prompt = generate_prompt(instruction, input)
+        prompt = 'Please tell me more about: ' + temp_dic['instruction'] + ' Answer is: '
+        inputs = tokenizer(prompt, return_tensors="pt")
+        input_ids = inputs["input_ids"].to(device)
+        generation_config = GenerationConfig(
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            num_beams=num_beams,
+            **kwargs,
+        )
+        with torch.no_grad():
+            generation_output = model.generate(
+                input_ids=input_ids,
+                generation_config=generation_config,
+                return_dict_in_generate=True,
+                output_scores=True,
+                max_new_tokens=max_new_tokens,
+            )
+        s = generation_output.sequences[0]
+        output = tokenizer.decode(s)
+        print(output)
+        print('-----------------------------------------')
+        em = 0
+        answer_list = i['answers']
+        output_answer = output.split('Answer is:')[1]
+        for answer in answer_list[0]:
+            em, f1, precision, recall = eval_ans(output_answer, answer)
+            if em > 0:
+                break
+        em_sum += em
+        em_count += 1
+        print(em_count)
+    print('EM is {}'.format(em_sum / em_count))
 
 def main():
     args = parse_args()
